@@ -4,15 +4,13 @@ gorgon
 A shell script that executes another script on a list of remote servers
 
 
-Prereqs
-=======
+## Prereqs
 
 1. You have root access to machine you are running gorgon from. TODO: This is not actually needed. Fix it.
 2. You have SSH keys set up and you don't need to type in a password on any of the hosts listed
 
 
-Example
-=======
+## Example
 
 Host file should have a list of IPs (or hostnames) that you want to execute a
 script on. 
