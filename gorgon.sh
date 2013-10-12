@@ -5,20 +5,29 @@ failedlog="$logdir/failed.$date.log"
 mkdir -p $logdir
 
 if [ $# -lt 3 ] ; then
-	echo "Usage: $0 user host-file script [params ...]"
+	echo "Usage: $0 user host-file command [params ...]"
 	exit 0
 fi
 
 user=$1
 host_file=$2
-script=$3
+command=$3
+#TODO: params aren't working correctly when there are spaces
 params="${@:4}"
 failed=0
 response=n
+need_to_copy=0
+
+if [ -f $command ] ; then
+	full_path=$command
+	script=`basename $command`
+	command="./$script"
+	need_to_copy=1
+fi
 
 echo "Configuration:"
 echo "User = \"$user\""
-echo "Script = \"$script\""
+echo "Command = \"$command\""
 echo "File with hosts = \"$host_file\""
 echo "First few lines of the $host_file:"
 head $host_file 
@@ -51,17 +60,19 @@ while read host ; do
 	log="$logdir/$name.log"
 	total=$(($total+1))
 	touch $log
-
 	echo "***********************************************" | tee -a $log
-	echo "Copying $script to $user@$host..." | tee -a $log
-	scp $script $user@$host:~ 2>&1 | tee -a $log
-	have_i_failed $user $host
-	if [ $? -ne 0 ] ; then
-		continue
+
+	if [ $need_to_copy -eq 1 ] ; then
+		echo "Copying $command to $user@$host..." | tee -a $log
+		scp $full_path $user@$host:~ 2>&1 | tee -a $log
+		have_i_failed $user $host
+		if [ $? -ne 0 ] ; then
+			continue
+		fi
 	fi
 
 	echo "Executing command on $user@$host..." | tee -a $log
-	0</dev/null ssh $user@$host ./$script $params 2>&1 | tee -a $log
+	0</dev/null ssh $user@$host $command $params 2>&1 | tee -a $log
 	have_i_failed $user $host
 	if [ $? -ne 0 ] ; then
 		continue
@@ -69,11 +80,13 @@ while read host ; do
 		echo -e "\e[0;32mSuccess!\e[0m" | tee -a $log
 	fi
 
-	echo "Removing $script from $user@$host..." | tee -a $log
-	0</dev/null ssh $user@$host rm $script 2>&1 | tee -a $log
-	have_i_failed $user $host
-	if [ $? -ne 0 ] ; then
-		continue
+	if [ $need_to_copy -eq 1 ] ; then
+		echo "Removing $script from $user@$host..." | tee -a $log
+		0</dev/null ssh $user@$host rm $script 2>&1 | tee -a $log
+		have_i_failed $user $host
+		if [ $? -ne 0 ] ; then
+			continue
+		fi
 	fi
 	
 	ok=$(($ok+1))
