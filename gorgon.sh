@@ -1,8 +1,14 @@
 #!/bin/bash
 date=`date +"%s"`
-logdir="/root/gorgon-logs"
+logdir="$HOME/.gorgon/logs"
 failedlog="$logdir/failed.$date.log"
 mkdir -p $logdir
+
+if [ $? -ne 0 ] ; then
+	echo "Unable to create logdir $logdir."
+	echo "Please check if you have write permissions there!"
+	exit 1
+fi
 
 if [ $# -lt 3 ] ; then
 	echo "Usage: $0 user host-file command [params ...]"
@@ -27,6 +33,7 @@ fi
 
 echo "Configuration:"
 echo "User = \"$user\""
+echo "Logdir = \"$logdir\""
 echo "Command = \"$command\""
 echo "File with hosts = \"$host_file\""
 echo "First few lines of the $host_file:"
@@ -71,7 +78,7 @@ while read host ; do
 		fi
 	fi
 
-	echo "Executing command on $user@$host..." | tee -a $log
+	echo "Executing command '$command $params' on $user@$host..." | tee -a $log
 	0</dev/null ssh $user@$host $command $params 2>&1 | tee -a $log
 	have_i_failed $user $host
 	if [ $? -ne 0 ] ; then
